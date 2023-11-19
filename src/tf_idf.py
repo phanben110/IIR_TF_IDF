@@ -123,10 +123,20 @@ def tf_idf():
     # Step 2: TF-IDF Options
     st.subheader("Step 2: TF-IDF Options")
     tfidf_type = st.selectbox("Choose TF-IDF Algorithm", ['Standard TF-IDF', 'Smoothed TF-IDF', "Probabilistic TF-IDF"])
+    if tfidf_type == "Standard TF-IDF":
+        st.image("image/tf-idf-nomal.png")
+    elif tfidf_type == "Smoothed TF-IDF":
+        st.image("image/tf-idf-smooth.png")
+    elif tfidf_type == "Probabilistic TF-IDF":
+        st.image("image/tf-idf-pro.png")
 
     # Step 3: Similarity Measure Options
     st.subheader("Step 3: Similarity Measure Options")
     similarity_measure = st.selectbox("Choose Similarity Measure", ['cosine', 'euclidean'])
+    if similarity_measure == "cosine":
+        st.image("image/cosine.png")
+    elif similarity_measure == "euclidean":
+        st.image("image/euclidean.png")
     
     # Create a button to trigger the algorithm
     if st.button("Run Algorithm"):
