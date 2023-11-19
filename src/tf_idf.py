@@ -6,6 +6,7 @@ from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
 from gensim.summarization.bm25 import BM25
 from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
+import numpy as np
 
 # Step 1: Data Preparation
 data_path = "dataset"
@@ -27,17 +28,53 @@ def preprocess_text(text, lowercasing=True, remove_stopwords=True, porter_stemmi
     return ' '.join(tokens)
 
 # Step 3: Term Weighting
-def calculate_tfidf(docs, tfidf_type='standard'):
-    if tfidf_type == 'standard':
+def calculate_tfidf(docs, tfidf_type='Standard TF-IDF'):
+    if tfidf_type == 'Standard TF-IDF':
         vectorizer = TfidfVectorizer()
         tfidf_matrix = vectorizer.fit_transform(docs)
-    elif tfidf_type == 'log-entropy':
-        vectorizer = TfidfVectorizer(sublinear_tf=True)
+    elif tfidf_type == 'Smoothed TF-IDF':
+        vectorizer = TfidfVectorizer(sublinear_tf=True, smooth_idf=True)
         tfidf_matrix = vectorizer.fit_transform(docs)
+    elif tfidf_type == "Probabilistic TF-IDF":
+        tfidf_matrix = calculate_probabilistic_tfidf(docs)
     else:
-        raise ValueError("Invalid TF-IDF type. Choose 'standard', 'bm25', or 'log-entropy'.")
+        raise ValueError("Invalid TF-IDF type. Choose 'Standard TF-IDF', 'Smoothed TF-IDF', or 'Probabilistic TF-IDF'.")
     
     return tfidf_matrix
+
+
+def calculate_probabilistic_tfidf(docs):
+    N = len(docs)  # Total number of documents in the corpus
+    
+    # Create a vocabulary mapping terms to integer indices
+    vocabulary = {term: idx for idx, term in enumerate(set(token for doc in docs for token in doc.split()))}
+    
+    # Term frequency matrix
+    tf_matrix = np.zeros((N, len(vocabulary)))
+    
+    # Calculate term frequency for each document
+    for i, doc in enumerate(docs):
+        for term in doc.split():
+            tf_matrix[i, vocabulary[term]] += 1
+    
+    # Document frequency vector
+    df_vector = np.zeros(len(tf_matrix[0]))
+    
+    # Calculate document frequency for each term
+    for i in range(len(df_vector)):
+        df_vector[i] = np.count_nonzero(tf_matrix[:, i])
+    
+    # Inverse Document Frequency (IDF)
+    idf_vector = np.log((N - df_vector + 0.5) / (df_vector + 0.5))
+    
+    # Term Frequency-Inverse Document Frequency (TF-IDF)
+    #tfidf_matrix = tf_matrix * idf_vector[:, np.newaxis]  # Add np.newaxis to broadcast idf_vector
+    tfidf_matrix = tf_matrix * idf_vector.reshape(1, -1)
+
+    
+    return tfidf_matrix
+
+
 
 # Step 4: Vector Space Representation
 def vectorize_documents(docs, tfidf_type='standard'):
@@ -85,7 +122,7 @@ def tf_idf():
 
     # Step 2: TF-IDF Options
     st.subheader("Step 2: TF-IDF Options")
-    tfidf_type = st.selectbox("Choose TF-IDF Algorithm", ['standard', 'log-entropy'])
+    tfidf_type = st.selectbox("Choose TF-IDF Algorithm", ['Standard TF-IDF', 'Smoothed TF-IDF', "Probabilistic TF-IDF"])
 
     # Step 3: Similarity Measure Options
     st.subheader("Step 3: Similarity Measure Options")
