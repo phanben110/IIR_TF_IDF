@@ -7,7 +7,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from gensim.summarization.bm25 import BM25
 from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
 import numpy as np
-
+import seaborn as sns
+import matplotlib.pyplot as plt
 # Step 1: Data Preparation
 data_path = "dataset"
 categories = os.listdir(data_path)
@@ -143,22 +144,29 @@ def tf_idf():
     elif similarity_measure == "euclidean":
         st.image("image/euclidean.png")
     
-    # Create a button to trigger the algorithm
     if st.button("Run Algorithm"):
-
+  
         for category in categories:
             category_path = os.path.join(data_path, category)
-            docs = [open(os.path.join(category_path, doc)).read() for doc in os.listdir(category_path)] 
-            
+            docs = [open(os.path.join(category_path, doc)).read() for doc in os.listdir(category_path)]
+
             # Apply selected preprocessing options
             preprocessed_docs = [preprocess_text(doc, lowercasing, remove_stopwords, porter_stemming) for doc in docs]
-            
+
             # Vector Space Representation
             tfidf_matrix = vectorize_documents(preprocessed_docs, tfidf_type)
-            
+
             # Similarity Measure
             similarity_matrix = calculate_similarity(tfidf_matrix, similarity_measure)
-            
+
+            # Visualization using Seaborn
+            plt.figure(figsize=(10, 8))
+            sns.heatmap(similarity_matrix, cmap="YlGnBu")
+            plt.title(f"Similarity Matrix - Category: {category}")
+            plt.xlabel("Documents")
+            plt.ylabel("Documents")
+            st.pyplot(plt)
+
             # Ranking
             ranked_documents, total_similarity_scores = rank_documents(similarity_matrix, docs)
 

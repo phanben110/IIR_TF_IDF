@@ -22,6 +22,8 @@ from src.frequency_analyst import frequency_analyst
 from src.bag_of_word import * 
 from src.skip_gram import * 
 from src.tf_idf import *
+from src.footer import settingFooter
+
 
 # Create an option menu for the main menu in the sidebar
 st.set_page_config(page_title="Search PubMed Articles", page_icon="image/logo_csie2.png")
@@ -32,6 +34,8 @@ with st.sidebar:
                            icons=['search-heart-fill','cloud-arrow-down-fill', 'lightbulb-fill', "handbag-fill", "chat-left-text-fill", "kanban"], menu_icon="bars", default_index=0)
 # Based on the selected option, you can display different content in your web application
 # page for select icon https://icons.getbootstrap.com/
+
+settingFooter()
 if selected == "Search Engine":
     search_engine()
 
@@ -50,14 +54,6 @@ elif selected == "Skip-gram":
 elif selected == "TF-IDF":
     tf_idf() 
     
-
-
-            
-
-
-
-
-
 
 
 
