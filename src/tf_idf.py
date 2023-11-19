@@ -94,7 +94,7 @@ def calculate_similarity(tfidf_matrix, similarity_measure='cosine'):
     return similarity_matrix
 
 # Step 6: Ranking
-def rank_documents(similarity_matrix):
+def rank_documents(similarity_matrix, docs):
     # Sum similarity scores for each document to get a total similarity score
     total_similarity_scores = similarity_matrix.sum(axis=1)
 
@@ -107,7 +107,11 @@ def rank_documents(similarity_matrix):
     # Unpack the sorted tuples into separate lists for indices and scores
     ranked_indices = [index for index, _ in sorted_index_score_tuples]
 
-    return ranked_indices, total_similarity_scores.flatten()[ranked_indices]
+    # Sort the documents based on similarity scores
+    ranked_documents = [docs[index] for index in ranked_indices]
+
+    return ranked_documents, total_similarity_scores.flatten()[ranked_indices]
+
 
 
 
@@ -122,6 +126,7 @@ def tf_idf():
 
     # Step 2: TF-IDF Options
     st.subheader("Step 2: TF-IDF Options")
+    st.image("image/compareTF-IDF.png")
     tfidf_type = st.selectbox("Choose TF-IDF Algorithm", ['Standard TF-IDF', 'Smoothed TF-IDF', "Probabilistic TF-IDF"])
     if tfidf_type == "Standard TF-IDF":
         st.image("image/tf-idf-nomal.png")
@@ -155,16 +160,16 @@ def tf_idf():
             similarity_matrix = calculate_similarity(tfidf_matrix, similarity_measure)
             
             # Ranking
-            ranked_indices, total_similarity_scores = rank_documents(similarity_matrix)
-            
+            ranked_documents, total_similarity_scores = rank_documents(similarity_matrix, docs)
+
             # Display results in a table
             st.subheader(f"Category: {category}")
             results = []
-            for idx, score in zip(ranked_indices, total_similarity_scores[ranked_indices]):
+            for doc, score in zip(ranked_documents, total_similarity_scores):
                 results.append({
-                    "Document": f"Document {idx + 1}",
+                    "Document": f"{docs.index(doc) + 1}",
                     "Similarity Score": f"{score:.4f}",
-                    "Abstract": docs[idx][:50],  # Display the first 50 characters of each document
+                    "Abstract": doc[:50],  # Display the first 50 characters of each document
                 })
 
             # Display the table for each category
