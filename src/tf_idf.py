@@ -111,6 +111,7 @@ def tf_idf():
 
     # st.image("image/compareTF-IDF.png")
     tfidf_type = st.selectbox("Choose TF-IDF Algorithm", ['None','Standard TF-IDF', 'Smoothed TF-IDF', "Probabilistic TF-IDF"])
+    tfidf_type_copy  = tfidf_type
     if tfidf_type == "Standard TF-IDF":
         st.image("image/tf-idf-nomal.png")
     elif tfidf_type == "Smoothed TF-IDF":
@@ -194,27 +195,27 @@ def tf_idf():
                     similarity = similarity_matrix[-1][index]
 
                     # Print document information
-                    print(f"{document_path} - Category: {category} - Similarity: {similarity}")
+                    # print(f"{document_path} - Category: {category} - Similarity: {similarity}")
 
                     # Accumulate the total similarity for the category
                     category_similarity[category] += similarity
 
             # Print the total similarity for each category
-            print("\nTotal Similarity for Each Category:")
-            for category, total_similarity in category_similarity.items():
-                print(f"{category}: {total_similarity}")
+            # print("\nTotal Similarity for Each Category:")
+            # for category, total_similarity in category_similarity.items():
+            #     print(f"{category}: {total_similarity}")
 
             # Sort and print the categories based on total similarity
             sorted_categories = sorted(category_similarity.items(), key=lambda x: x[1], reverse=True)
-            print("\nRanking by Total Similarity:")
-            for category, total_similarity in sorted_categories:
-                print(f"{category}: {total_similarity}")
+            # print("\nRanking by Total Similarity:")
+            # for category, total_similarity in sorted_categories:
+            #     print(f"{category}: {total_similarity}")
 
             # Visualization using Seaborn
             sns.set(style="whitegrid")
             plt.figure(figsize=(10, 6))
             total_similarity_sum = sum(total_similarity for _, total_similarity in sorted_categories)
-            percentage_values = [total_similarity / total_similarity_sum * 100 for _, total_similarity in sorted_categories]
+            percentage_values = [total_similarity for _, total_similarity in sorted_categories]
 
             bar_plot = sns.barplot(
                 x=[category for category, _ in sorted_categories],
@@ -222,12 +223,12 @@ def tf_idf():
                 palette="viridis"
             )
 
-            bar_plot.set(xlabel="Category", ylabel="Percentage of Total Similarity", title="Ranking by Total Similarity")
+            bar_plot.set(xlabel="Category", ylabel="Total Similarity", title="Ranking by Total Similarity")
             plt.xticks(rotation=45, ha='right')
 
             # Display percentage values on top of the bars
             for i, value in enumerate(percentage_values):
-                bar_plot.text(i, value + 0.5, f"{value:.2f}%", ha='center', va='bottom', fontsize=8, color='black')
+                bar_plot.text(i, value , f"{value:.2f}", ha='center', va='bottom', fontsize=8, color='black')
 
             plt.tight_layout()
             st.pyplot(plt)
@@ -256,7 +257,9 @@ def tf_idf():
                 percentage_values = {}
                 for category, values in similarity_dict.items():
                     total_similarity_sum = sum(values.values())
-                    percentage_values[category] = {tfidf_type: value / total_similarity_sum * 100 for tfidf_type, value in values.items()}
+                    percentage_values[category] = {tfidf_type: value for tfidf_type, value in values.items()}
+
+                # Display Comparison Table
 
                 # Display Comparison Table
                 st.markdown(f'<p style="text-align:center; color:red;">Total Similarity for TF-IDF Algorithms (by Category)</p>', unsafe_allow_html=True)
@@ -268,16 +271,26 @@ def tf_idf():
 
                 comparison_df = pd.DataFrame(comparison_data)
                 comparison_df.set_index('Category', inplace=True)
-
-                # Highlight and print in red for "Category" column and TF-IDF algorithm columns
+                # # Highlight and print in red for "Category" column and TF-IDF algorithm columns
                 styled_df = comparison_df.style.applymap(lambda x: f"color: {'red' if x != 0 else 'black'}") \
                                                 .set_table_styles([
                                                     {'selector': 'thead',
                                                     'props': [('background-color', 'lightgrey')]}
                                                 ])
+                
+                # Sort DataFrame based on selected tfidf_type
+                if tfidf_type_copy in ['Standard TF-IDF', 'Smoothed TF-IDF', 'Probabilistic TF-IDF']:
+                    sorted_df = comparison_df.sort_values(by=tfidf_type_copy, ascending=False)
+                  # # Highlight and print in red for "Category" column and TF-IDF algorithm columns
+                    sorted_df = comparison_df.style.applymap(lambda x: f"color: {'red' if x != 0 else 'black'}") \
+                                                    .set_table_styles([
+                                                        {'selector': 'thead',
+                                                        'props': [('background-color', 'lightgrey')]}
+                                                    ])
+                    st.table(sorted_df)  # Display the sorted DataFrame
+                else:
+                    st.table(styled_df)  # Display the original DataFrame without sorting
 
-                # Display the styled comparison table
-                st.table(styled_df)
 
 
 if __name__ == "__main__":
