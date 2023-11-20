@@ -1,22 +1,25 @@
-import streamlit as st
 import os
 import nltk
-from nltk.stem import PorterStemmer
 from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
 from sklearn.feature_extraction.text import TfidfVectorizer
-from gensim.summarization.bm25 import BM25
 from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
 import numpy as np
+from collections import defaultdict
 import seaborn as sns
 import matplotlib.pyplot as plt
-# Step 1: Data Preparation
-data_path = "dataset"
-categories = os.listdir(data_path)
+import streamlit as st
+import pandas as pd
 
-# Step 2: Preprocessing
+# Download NLTK resources (if not already downloaded)
+nltk.download('punkt')
 nltk.download('stopwords')
-stop_words = set(stopwords.words('english'))
+
+# Create a Porter stemmer
 ps = PorterStemmer()
+
+# Load English stop words
+stop_words = set(stopwords.words('english'))
 
 def preprocess_text(text, lowercasing=True, remove_stopwords=True, porter_stemming=True):
     tokens = nltk.word_tokenize(text)
@@ -37,13 +40,24 @@ def calculate_tfidf(docs, tfidf_type='Standard TF-IDF'):
         vectorizer = TfidfVectorizer(sublinear_tf=True, smooth_idf=True)
         tfidf_matrix = vectorizer.fit_transform(docs)
     elif tfidf_type == "Probabilistic TF-IDF":
-        tfidf_matrix = calculate_probabilistic_tfidf(docs)
+        tfidf_matrix = calculate_probabilistic_tfidf(docs)  # You need to implement calculate_probabilistic_tfidf function
     else:
         raise ValueError("Invalid TF-IDF type. Choose 'Standard TF-IDF', 'Smoothed TF-IDF', or 'Probabilistic TF-IDF'.")
     
     return tfidf_matrix
 
+# Step 5: Similarity Measure
+def calculate_similarity(tfidf_matrix, similarity_measure='cosine'):
+    if similarity_measure == 'cosine':
+        similarity_matrix = cosine_similarity(tfidf_matrix)
+    elif similarity_measure == 'euclidean':
+        similarity_matrix = 1 / (1 + euclidean_distances(tfidf_matrix))
+    else:
+        raise ValueError("Invalid similarity measure. Choose 'cosine' or 'euclidean'.")
+    
+    return similarity_matrix
 
+# Step 4: Probabilistic TF-IDF Calculation
 def calculate_probabilistic_tfidf(docs):
     N = len(docs)  # Total number of documents in the corpus
     
@@ -69,56 +83,20 @@ def calculate_probabilistic_tfidf(docs):
     idf_vector = np.log((N - df_vector + 0.5) / (df_vector + 0.5))
     
     # Term Frequency-Inverse Document Frequency (TF-IDF)
-    #tfidf_matrix = tf_matrix * idf_vector[:, np.newaxis]  # Add np.newaxis to broadcast idf_vector
     tfidf_matrix = tf_matrix * idf_vector.reshape(1, -1)
-
     
     return tfidf_matrix
-
-
-
-# Step 4: Vector Space Representation
-def vectorize_documents(docs, tfidf_type='standard'):
-    preprocessed_docs = [preprocess_text(doc) for doc in docs]
-    tfidf_matrix = calculate_tfidf(preprocessed_docs, tfidf_type)
-    return tfidf_matrix
-
-# Step 5: Similarity Measure
-def calculate_similarity(tfidf_matrix, similarity_measure='cosine'):
-    if similarity_measure == 'cosine':
-        similarity_matrix = cosine_similarity(tfidf_matrix)
-    elif similarity_measure == 'euclidean':
-        similarity_matrix = 1 / (1 + euclidean_distances(tfidf_matrix))
-    else:
-        raise ValueError("Invalid similarity measure. Choose 'cosine' or 'euclidean'.")
-    
-    return similarity_matrix
-
-# Step 6: Ranking
-def rank_documents(similarity_matrix, docs):
-    # Sum similarity scores for each document to get a total similarity score
-    total_similarity_scores = similarity_matrix.sum(axis=1)
-
-    # Enumerate through indices and scores and store in a list of tuples
-    index_score_tuples = list(enumerate(total_similarity_scores.flatten()))
-
-    # Sort the list of tuples based on similarity scores in descending order
-    sorted_index_score_tuples = sorted(index_score_tuples, key=lambda x: x[1], reverse=True)
-
-    # Unpack the sorted tuples into separate lists for indices and scores
-    ranked_indices = [index for index, _ in sorted_index_score_tuples]
-
-    # Sort the documents based on similarity scores
-    ranked_documents = [docs[index] for index in ranked_indices]
-
-    return ranked_documents, total_similarity_scores.flatten()[ranked_indices]
 
 
 
 
 def tf_idf():
     st.image("image/tfidf.png")
-    
+
+    # User Input Area
+    st.subheader("User Input")
+    input_text = st.text_area("Enter your text here:")
+
     # Step 1: Preprocessing Options
     st.subheader("Step 1: Preprocessing Options")
     lowercasing = st.checkbox("Lowercasing", value=True)
@@ -127,14 +105,12 @@ def tf_idf():
 
     # Step 2: TF-IDF Options
     st.subheader("Step 2: TF-IDF Options")
-    st.image("image/compareTF-IDF.png")
-    tfidf_type = st.selectbox("Choose TF-IDF Algorithm", ['Standard TF-IDF', 'Smoothed TF-IDF', "Probabilistic TF-IDF"])
+    # st.image("image/compareTF-IDF.png")
+    tfidf_type = st.selectbox("Choose TF-IDF Algorithm", ['Standard TF-IDF', 'Smoothed TF-IDF'])
     if tfidf_type == "Standard TF-IDF":
         st.image("image/tf-idf-nomal.png")
     elif tfidf_type == "Smoothed TF-IDF":
         st.image("image/tf-idf-smooth.png")
-    elif tfidf_type == "Probabilistic TF-IDF":
-        st.image("image/tf-idf-pro.png")
 
     # Step 3: Similarity Measure Options
     st.subheader("Step 3: Similarity Measure Options")
@@ -143,45 +119,101 @@ def tf_idf():
         st.image("image/cosine.png")
     elif similarity_measure == "euclidean":
         st.image("image/euclidean.png")
-    
+
     if st.button("Run Algorithm"):
-  
-        for category in categories:
-            category_path = os.path.join(data_path, category)
-            docs = [open(os.path.join(category_path, doc)).read() for doc in os.listdir(category_path)]
+        # Process user input
+        # Path to the dataset
+        dataset_path = "dataset"
 
-            # Apply selected preprocessing options
-            preprocessed_docs = [preprocess_text(doc, lowercasing, remove_stopwords, porter_stemming) for doc in docs]
+        # Get the list of document paths
+        document_paths = [os.path.join(root, file) for root, dirs, files in os.walk(dataset_path) for file in files]
 
-            # Vector Space Representation
-            tfidf_matrix = vectorize_documents(preprocessed_docs, tfidf_type)
+        # Read the contents of each document
+        documents = [open(document_path, 'r', encoding='utf-8').read() for document_path in document_paths]
 
-            # Similarity Measure
-            similarity_matrix = calculate_similarity(tfidf_matrix, similarity_measure)
+        # Preprocess documents
+        preprocessed_documents = [preprocess_text(doc, lowercasing=True, remove_stopwords=True, porter_stemming=True) for doc in documents]
 
-            # Visualization using Seaborn
-            plt.figure(figsize=(10, 8))
-            sns.heatmap(similarity_matrix, cmap="YlGnBu")
-            plt.title(f"Similarity Matrix - Category: {category}")
-            plt.xlabel("Documents")
-            plt.ylabel("Documents")
-            st.pyplot(plt)
+        # Add the input text to the preprocessed documents list
+        preprocessed_documents.append(preprocess_text(input_text, lowercasing=True, remove_stopwords=True, porter_stemming=True))
 
-            # Ranking
-            ranked_documents, total_similarity_scores = rank_documents(similarity_matrix, docs)
+        # Choose the TF-IDF type (you can change this to 'Smoothed TF-IDF' or 'Probabilistic TF-IDF')
+        tfidf_type = 'Probabilistic TF-IDF'
+        tfidf_matrix = calculate_tfidf(preprocessed_documents, tfidf_type)
 
-            # Display results in a table
-            st.subheader(f"Category: {category}")
-            results = []
-            for doc, score in zip(ranked_documents, total_similarity_scores):
-                results.append({
-                    "Document": f"{docs.index(doc) + 1}",
-                    "Similarity Score": f"{score:.4f}",
-                    "Abstract": doc[:50],  # Display the first 50 characters of each document
+        # Calculate similarity between documents
+        similarity_measure = 'cosine'  # You can change this to 'cosine' if needed
+        similarity_matrix = calculate_similarity(tfidf_matrix, similarity_measure)
+
+        # Create a dictionary to store the total similarity for each category
+        category_similarity = defaultdict(float)
+
+        # ...
+
+        # Get the indices of documents sorted by similarity
+        sorted_indices = similarity_matrix[-1].argsort()[::-1]
+
+        # Check for the minimum length between document_paths and similarity_matrix
+        min_length = min(len(document_paths), len(similarity_matrix[-1]))
+
+        document_info = []
+
+        # Print the ranked documents and calculate total similarity for each category
+        for index in sorted_indices[:min_length]:
+            if index < len(document_paths):
+                document_path = document_paths[index]
+                category = os.path.basename(os.path.dirname(document_path))  # Extract category from the folder name
+                similarity = similarity_matrix[-1][index]
+                abstract = documents[index]  # Assuming documents contain the full text of each document
+
+                # Append document information to the list
+                document_info.append({
+                    "Document Name": os.path.basename(document_path),
+                    "Category": category,
+                    "Similarity Score": similarity,
+                    "Abstract": abstract[:100]  # Displaying the first 100 characters of the abstract
                 })
 
-            # Display the table for each category
-            st.table(results)
+        # Create a DataFrame from the list of document information
+        df = pd.DataFrame(document_info)
+
+        st.subheader("Ranked Documents:")
+        st.table(df.head(100).sort_values(by="Similarity Score", ascending=False))
+
+
+        # Print the ranked documents and calculate total similarity for each category
+        print("Ranked Documents:")
+        for index in sorted_indices[:min_length]:
+            if index < len(document_paths):
+                document_path = document_paths[index]
+                category = os.path.basename(os.path.dirname(document_path))  # Extract category from the folder name
+                similarity = similarity_matrix[-1][index]
+
+                # Print document information
+                print(f"{document_path} - Category: {category} - Similarity: {similarity}")
+
+                # Accumulate the total similarity for the category
+                category_similarity[category] += similarity
+
+        # Print the total similarity for each category
+        print("\nTotal Similarity for Each Category:")
+        for category, total_similarity in category_similarity.items():
+            print(f"{category}: {total_similarity}")
+
+        # Sort and print the categories based on total similarity
+        sorted_categories = sorted(category_similarity.items(), key=lambda x: x[1], reverse=True)
+        print("\nRanking by Total Similarity:")
+        for category, total_similarity in sorted_categories:
+            print(f"{category}: {total_similarity}")
+
+        # Visualization using Seaborn
+        sns.set(style="whitegrid")
+        plt.figure(figsize=(10, 6))
+        bar_plot = sns.barplot(x=[category for category, _ in sorted_categories], y=[total_similarity for _, total_similarity in sorted_categories], palette="viridis")
+        bar_plot.set(xlabel="Category", ylabel="Total Similarity", title="Ranking by Total Similarity")
+        plt.xticks(rotation=45, ha='right')
+        plt.tight_layout()
+        st.pyplot(plt)
 
 if __name__ == "__main__":
     tf_idf()

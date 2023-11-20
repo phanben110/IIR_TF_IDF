@@ -54,6 +54,3 @@ elif selected == "Skip-gram":
 elif selected == "TF-IDF":
     tf_idf() 
     
-
-
-
