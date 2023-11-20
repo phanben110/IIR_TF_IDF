@@ -89,12 +89,11 @@ def calculate_probabilistic_tfidf(docs):
 
 
 
-
 def tf_idf():
     st.image("image/tfidf.png")
 
     # User Input Area
-    st.subheader("User Input")
+    st.subheader("Input text")
     input_text = st.text_area("Enter your text here:")
 
     # Step 1: Preprocessing Options
@@ -105,115 +104,181 @@ def tf_idf():
 
     # Step 2: TF-IDF Options
     st.subheader("Step 2: TF-IDF Options")
+
+    toggle_show_example = st.toggle("Show example", value=False)
+    if toggle_show_example:
+        st.image("image/compareTF-IDF.png")
+
     # st.image("image/compareTF-IDF.png")
-    tfidf_type = st.selectbox("Choose TF-IDF Algorithm", ['Standard TF-IDF', 'Smoothed TF-IDF'])
+    tfidf_type = st.selectbox("Choose TF-IDF Algorithm", ['None','Standard TF-IDF', 'Smoothed TF-IDF', "Probabilistic TF-IDF"])
     if tfidf_type == "Standard TF-IDF":
         st.image("image/tf-idf-nomal.png")
     elif tfidf_type == "Smoothed TF-IDF":
         st.image("image/tf-idf-smooth.png")
+    elif tfidf_type == "Probabilistic TF-IDF": 
+        st.image("image/tf-idf-pro.png")
 
     # Step 3: Similarity Measure Options
     st.subheader("Step 3: Similarity Measure Options")
-    similarity_measure = st.selectbox("Choose Similarity Measure", ['cosine', 'euclidean'])
+    similarity_measure = st.selectbox("Choose Similarity Measure", ['None','cosine', 'euclidean'])
     if similarity_measure == "cosine":
         st.image("image/cosine.png")
     elif similarity_measure == "euclidean":
         st.image("image/euclidean.png")
 
-    if st.button("Run Algorithm"):
-        # Process user input
-        # Path to the dataset
-        dataset_path = "dataset"
+    if similarity_measure is not "None" and tfidf_type is not "None":
+        if st.button("Run Algorithm"):
+            # Process user input
+            # Path to the dataset
+            dataset_path = "dataset"
 
-        # Get the list of document paths
-        document_paths = [os.path.join(root, file) for root, dirs, files in os.walk(dataset_path) for file in files]
+            # Get the list of document paths
+            document_paths = [os.path.join(root, file) for root, dirs, files in os.walk(dataset_path) for file in files]
 
-        # Read the contents of each document
-        documents = [open(document_path, 'r', encoding='utf-8').read() for document_path in document_paths]
+            # Read the contents of each document
+            documents = [open(document_path, 'r', encoding='utf-8').read() for document_path in document_paths]
 
-        # Preprocess documents
-        preprocessed_documents = [preprocess_text(doc, lowercasing=True, remove_stopwords=True, porter_stemming=True) for doc in documents]
+            # Preprocess documents
+            preprocessed_documents = [preprocess_text(doc, lowercasing=True, remove_stopwords=True, porter_stemming=True) for doc in documents]
 
-        # Add the input text to the preprocessed documents list
-        preprocessed_documents.append(preprocess_text(input_text, lowercasing=True, remove_stopwords=True, porter_stemming=True))
+            # Add the input text to the preprocessed documents list
+            preprocessed_documents.append(preprocess_text(input_text, lowercasing=True, remove_stopwords=True, porter_stemming=True))
 
-        # Choose the TF-IDF type (you can change this to 'Smoothed TF-IDF' or 'Probabilistic TF-IDF')
-        tfidf_type = 'Probabilistic TF-IDF'
-        tfidf_matrix = calculate_tfidf(preprocessed_documents, tfidf_type)
+            # Choose the TF-IDF type (you can change this to 'Smoothed TF-IDF' or 'Probabilistic TF-IDF')
+            tfidf_matrix = calculate_tfidf(preprocessed_documents, tfidf_type)
 
-        # Calculate similarity between documents
-        similarity_measure = 'cosine'  # You can change this to 'cosine' if needed
-        similarity_matrix = calculate_similarity(tfidf_matrix, similarity_measure)
+            # Calculate similarity between documents
+            similarity_matrix = calculate_similarity(tfidf_matrix, similarity_measure)
 
-        # Create a dictionary to store the total similarity for each category
-        category_similarity = defaultdict(float)
-
-        # ...
-
-        # Get the indices of documents sorted by similarity
-        sorted_indices = similarity_matrix[-1].argsort()[::-1]
-
-        # Check for the minimum length between document_paths and similarity_matrix
-        min_length = min(len(document_paths), len(similarity_matrix[-1]))
-
-        document_info = []
-
-        # Print the ranked documents and calculate total similarity for each category
-        for index in sorted_indices[:min_length]:
-            if index < len(document_paths):
-                document_path = document_paths[index]
-                category = os.path.basename(os.path.dirname(document_path))  # Extract category from the folder name
-                similarity = similarity_matrix[-1][index]
-                abstract = documents[index]  # Assuming documents contain the full text of each document
-
-                # Append document information to the list
-                document_info.append({
-                    "Document Name": os.path.basename(document_path),
-                    "Category": category,
-                    "Similarity Score": similarity,
-                    "Abstract": abstract[:100]  # Displaying the first 100 characters of the abstract
-                })
-
-        # Create a DataFrame from the list of document information
-        df = pd.DataFrame(document_info)
-
-        st.subheader("Ranked Documents:")
-        st.table(df.head(100).sort_values(by="Similarity Score", ascending=False))
+            # Create a dictionary to store the total similarity for each category
+            category_similarity = defaultdict(float)
 
 
-        # Print the ranked documents and calculate total similarity for each category
-        print("Ranked Documents:")
-        for index in sorted_indices[:min_length]:
-            if index < len(document_paths):
-                document_path = document_paths[index]
-                category = os.path.basename(os.path.dirname(document_path))  # Extract category from the folder name
-                similarity = similarity_matrix[-1][index]
+            # Get the indices of documents sorted by similarity
+            sorted_indices = similarity_matrix[-1].argsort()[::-1]
 
-                # Print document information
-                print(f"{document_path} - Category: {category} - Similarity: {similarity}")
+            # Check for the minimum length between document_paths and similarity_matrix
+            min_length = min(len(document_paths), len(similarity_matrix[-1]))
 
-                # Accumulate the total similarity for the category
-                category_similarity[category] += similarity
+            document_info = []
 
-        # Print the total similarity for each category
-        print("\nTotal Similarity for Each Category:")
-        for category, total_similarity in category_similarity.items():
-            print(f"{category}: {total_similarity}")
+            # Print the ranked documents and calculate total similarity for each category
+            for index in sorted_indices[:min_length]:
+                if index < len(document_paths):
+                    document_path = document_paths[index]
+                    category = os.path.basename(os.path.dirname(document_path))  # Extract category from the folder name
+                    similarity = similarity_matrix[-1][index]
+                    abstract = documents[index]  # Assuming documents contain the full text of each document
 
-        # Sort and print the categories based on total similarity
-        sorted_categories = sorted(category_similarity.items(), key=lambda x: x[1], reverse=True)
-        print("\nRanking by Total Similarity:")
-        for category, total_similarity in sorted_categories:
-            print(f"{category}: {total_similarity}")
+                    # Append document information to the list
+                    document_info.append({
+                        "Document Name": os.path.basename(document_path),
+                        "Category": category,
+                        "Similarity Score": similarity,
+                        "Abstract": abstract[:100]  # Displaying the first 100 characters of the abstract
+                    })
 
-        # Visualization using Seaborn
-        sns.set(style="whitegrid")
-        plt.figure(figsize=(10, 6))
-        bar_plot = sns.barplot(x=[category for category, _ in sorted_categories], y=[total_similarity for _, total_similarity in sorted_categories], palette="viridis")
-        bar_plot.set(xlabel="Category", ylabel="Total Similarity", title="Ranking by Total Similarity")
-        plt.xticks(rotation=45, ha='right')
-        plt.tight_layout()
-        st.pyplot(plt)
+            # Create a DataFrame from the list of document information
+            df = pd.DataFrame(document_info)
+
+            st.markdown(f'<p style="text-align:center; color:red;">Ranked Documents</p>', unsafe_allow_html=True)
+            st.table(df.head(100).sort_values(by="Similarity Score", ascending=False))
+
+
+            # Print the ranked documents and calculate total similarity for each category
+            print("Ranked Documents:")
+            for index in sorted_indices[:min_length]:
+                if index < len(document_paths):
+                    document_path = document_paths[index]
+                    category = os.path.basename(os.path.dirname(document_path))  # Extract category from the folder name
+                    similarity = similarity_matrix[-1][index]
+
+                    # Print document information
+                    print(f"{document_path} - Category: {category} - Similarity: {similarity}")
+
+                    # Accumulate the total similarity for the category
+                    category_similarity[category] += similarity
+
+            # Print the total similarity for each category
+            print("\nTotal Similarity for Each Category:")
+            for category, total_similarity in category_similarity.items():
+                print(f"{category}: {total_similarity}")
+
+            # Sort and print the categories based on total similarity
+            sorted_categories = sorted(category_similarity.items(), key=lambda x: x[1], reverse=True)
+            print("\nRanking by Total Similarity:")
+            for category, total_similarity in sorted_categories:
+                print(f"{category}: {total_similarity}")
+
+            # Visualization using Seaborn
+            sns.set(style="whitegrid")
+            plt.figure(figsize=(10, 6))
+            total_similarity_sum = sum(total_similarity for _, total_similarity in sorted_categories)
+            percentage_values = [total_similarity / total_similarity_sum * 100 for _, total_similarity in sorted_categories]
+
+            bar_plot = sns.barplot(
+                x=[category for category, _ in sorted_categories],
+                y=percentage_values,
+                palette="viridis"
+            )
+
+            bar_plot.set(xlabel="Category", ylabel="Percentage of Total Similarity", title="Ranking by Total Similarity")
+            plt.xticks(rotation=45, ha='right')
+
+            # Display percentage values on top of the bars
+            for i, value in enumerate(percentage_values):
+                bar_plot.text(i, value + 0.5, f"{value:.2f}%", ha='center', va='bottom', fontsize=8, color='black')
+
+            plt.tight_layout()
+            st.pyplot(plt)
+
+            # Step 6: Toggle Button for Comparison Table
+            st.sidebar.subheader("Step 6: Toggle for Comparison Table")
+            show_comparison_table = st.sidebar.checkbox("Show Comparison Table", value=True)
+
+            if show_comparison_table:
+                # Calculate Percentage of Total Similarity for each algorithm and each category
+                similarity_dict = defaultdict(lambda: defaultdict(float))
+
+                for tfidf_type in ['Standard TF-IDF', 'Smoothed TF-IDF', 'Probabilistic TF-IDF']:
+                    tfidf_matrix = calculate_tfidf(preprocessed_documents, tfidf_type)
+                    similarity_matrix = calculate_similarity(tfidf_matrix, similarity_measure)
+                    sorted_indices = similarity_matrix[-1].argsort()[::-1]
+
+                    for index in sorted_indices[:min_length]:
+                        if index < len(document_paths):
+                            document_path = document_paths[index]
+                            category = os.path.basename(os.path.dirname(document_path))
+                            similarity = similarity_matrix[-1][index]
+                            similarity_dict[category][tfidf_type] += similarity
+
+                # Normalize values to percentages for each category
+                percentage_values = {}
+                for category, values in similarity_dict.items():
+                    total_similarity_sum = sum(values.values())
+                    percentage_values[category] = {tfidf_type: value / total_similarity_sum * 100 for tfidf_type, value in values.items()}
+
+                # Display Comparison Table
+                st.markdown(f'<p style="text-align:center; color:red;">Total Similarity for TF-IDF Algorithms (by Category)</p>', unsafe_allow_html=True)
+
+                # Create a DataFrame for the comparison table
+                comparison_data = {'Category': list(percentage_values.keys())}
+                for tfidf_type in ['Standard TF-IDF', 'Smoothed TF-IDF', 'Probabilistic TF-IDF']:
+                    comparison_data[tfidf_type] = [values.get(tfidf_type, 0) for values in percentage_values.values()]
+
+                comparison_df = pd.DataFrame(comparison_data)
+                comparison_df.set_index('Category', inplace=True)
+
+                # Highlight and print in red for "Category" column and TF-IDF algorithm columns
+                styled_df = comparison_df.style.applymap(lambda x: f"color: {'red' if x != 0 else 'black'}") \
+                                                .set_table_styles([
+                                                    {'selector': 'thead',
+                                                    'props': [('background-color', 'lightgrey')]}
+                                                ])
+
+                # Display the styled comparison table
+                st.table(styled_df)
+
 
 if __name__ == "__main__":
     tf_idf()
